@@ -1,15 +1,23 @@
 # TW_Unity
 TW_Unity it is a library for Unity that simplifies integration with twitch.
-
 This library provides a collection of functions and events to connect with the Twitch API and EventsSub more easily.
-
 This is a first version, so feel free to add or modify whatever you want.
 ## Getting started
+
+*Requires Unity 2022.3+*
+
 first, you'll need to have **[NativeWebSocket](https://github.com/endel/NativeWebSocket)**  and **[UniTask](https://github.com/Cysharp/UniTask)** on your unity project
+
 
 next, open the unity package manager (UPM) and select install package from git URL... and enter the URL: ````https://github.com/Raulchis772/TW_Unity.git?path=TW_Unity````
 
 ### example of use
+First, you need in the scene a gameobject in the scene with a TW_AuthDataHandler component.
+You can quickly create this component from the menu bar:
+
+ *TWUnity  => CreateAuthDataObject*  
+
+Then, you can use the library like this:
 ```csharp
 using TW_API;
 using TW_EventSub;
@@ -74,7 +82,6 @@ public class TestTW_Unity : MonoBehaviour
 ### features
 #### TW_API
 If you want to learn more about the different API endpoints, visit: https://dev.twitch.tv/docs/api/reference/.
-
 Here are the endpoints available through the library:
  - GetCustomReward
  - GetBitsLeaderBoard
@@ -87,8 +94,7 @@ Here are the endpoints available through the library:
  
  #### TW_EventSub
  If you want know about the differents Events types visit: https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/.
- 
- Here are the events available that you can subscribe to using EventSub:
+ Here are the events available that you can subscribe to usinf EventSub:
  - OnMessageReceived (channel.chat.message)
  - OnCustomRewardRedemption (channel.channel_points_custom_reward_redemption.add)
  - OnFollow (channel.follow)
