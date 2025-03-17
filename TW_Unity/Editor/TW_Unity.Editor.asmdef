@@ -1,0 +1,20 @@
+{
+    "name": "TW_Unity.Editor",
+    "rootNamespace": "",
+    "references": [
+        "TW_Unity",
+        "endel.nativewebsocket",
+        "UniTask"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
