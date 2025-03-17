@@ -10,6 +10,14 @@ first, you'll need to have **[NativeWebSocket](https://github.com/endel/NativeWe
 next, open the unity package manager (UPM) and select install package from git URL... and enter the URL: ````https://github.com/Raulchis772/TW_Unity.git?path=TW_Unity````
 
 ### example of use
+
+First, you need in the scene a gameobject in the scene with a TW_AuthDataHandler component.
+You can quickly create this component from the menu bar:
+
+ *TWUnity  => CreateAuthDataObject*  
+<img src="Media/CreateAuthDataObject.png?raw=true" alt="Native WebSocket" />
+
+Then, you can use the library like this:
 ```csharp
 using TW_API;
 using TW_EventSub;
