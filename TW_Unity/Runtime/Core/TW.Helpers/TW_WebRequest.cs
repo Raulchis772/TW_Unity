@@ -12,6 +12,9 @@ namespace TW_WebHelper
         public static async UniTask<TW_WebResponse> CommonRequest(string path, RequestType requestType = RequestType.GET, Dictionary<string, string> queryParameters = null, Dictionary<string, string> headers = null, string body = null)
         {
             string uri = "https://api.twitch.tv/helix/" + path;
+
+            //this is for test with twitch CLI only
+            //string uri = testURI.uriSubscribe + path;
             if (queryParameters != null && queryParameters.Count != 0)
             {
                 uri += "?";
@@ -21,6 +24,7 @@ namespace TW_WebHelper
                 }
                 uri = uri.Remove(uri.Length - 1);
             }
+            Debug.Log("result uri: " + uri);
 
             await UniTask.Yield();
 
@@ -38,14 +42,14 @@ namespace TW_WebHelper
                         }
 
                         await www.SendWebRequest();
-                        Debug.Log(www.result);
+
                         if (www.result == UnityWebRequest.Result.Success)
                         {
+                            Debug.Log(www.downloadHandler.text);
                             return new TW_WebResponse() { data = www.downloadHandler.text };
                         }
                         else
                         {
-                            Debug.Log("Error");
                             string Error = www.error;
                             return new TW_WebResponse() { error = Error };
                         }
@@ -61,6 +65,7 @@ namespace TW_WebHelper
                             byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(body);
                             www.uploadHandler = new UploadHandlerRaw(bodyRaw);
                             www.downloadHandler = new DownloadHandlerBuffer();
+                            //www.SetRequestHeader("Content-Type", "application/json");
                             www.SetRequestHeader("Accept", "*/*");
 
                             if (headers != null)
@@ -72,8 +77,10 @@ namespace TW_WebHelper
                             }
 
                             await www.SendWebRequest();
+
                             if (www.result == UnityWebRequest.Result.Success)
                             {
+                                Debug.Log("Post request success");
                                 return new TW_WebResponse() { data = www.downloadHandler.text };
                             }
                             else
@@ -110,6 +117,7 @@ namespace TW_WebHelper
                         await www.SendWebRequest();
                         if (www.result == UnityWebRequest.Result.Success)
                         {
+                            Debug.Log("Patch request success");
                             return new TW_WebResponse() { data = www.downloadHandler.text };
                         }
                         else

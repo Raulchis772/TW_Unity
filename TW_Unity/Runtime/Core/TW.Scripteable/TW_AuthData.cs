@@ -6,6 +6,7 @@ public class TW_AuthData : ScriptableObject
 {
     public string clientID;
     public string authToken;
+    public string refreshToken;
     public string authenticatedAccountID;
 
  
@@ -29,6 +30,19 @@ public class TW_AuthData : ScriptableObject
             return false;
         }
         if (!authToken.Any())
+        {
+            return false;
+        }
+        return true;
+    }
+
+    public bool RefreshTokenHasData()
+    {
+        if (string.IsNullOrEmpty(refreshToken))
+        {
+            return false;
+        }
+        if (!refreshToken.Any())
         {
             return false;
         }

@@ -69,5 +69,11 @@ namespace TW_API
             TW_GetChannelEmotesResponse getChannelEmotesResponse = await TW_API_GetChannelEmotes.GetChannelEmotes(broadcasterID);
             return getChannelEmotesResponse;
         }
+
+        public static async UniTask<TW_GetUserEmotesResponse> GetUserEmotes(string userID = null)
+        {
+            TW_GetUserEmotesResponse getUserEmotesResponse = await TW_API_GetUserEmotes.GetUserEmotes(userID);
+            return getUserEmotesResponse;
+        }
     }
 }

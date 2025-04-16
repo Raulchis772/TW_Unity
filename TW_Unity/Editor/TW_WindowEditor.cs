@@ -20,6 +20,7 @@ public class TW_WindowEditor : EditorWindow
             Selection.activeObject = newobject;
         }
 
+        Debug.Log("hola");
     }
 
 

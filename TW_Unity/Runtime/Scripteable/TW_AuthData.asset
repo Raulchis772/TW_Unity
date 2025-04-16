@@ -15,4 +15,4 @@ MonoBehaviour:
   clientID: 
   authToken: 
   refreshToken: 
-  broadcasterID: 
+  authenticatedAccountID: 

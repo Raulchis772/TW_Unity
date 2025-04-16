@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using TW_EventSub_Models;
 using TW_Models;
 using TW_WebHelper;
+using UnityEditor.ShaderGraph.Internal;
 using UnityEngine;
 
 namespace TW_EventSub
@@ -15,20 +16,18 @@ namespace TW_EventSub
         private TW_AuthData authData;
         WebSocket currentWebSocket;
         string eventID;
-
+        bool authTokenIsOK = true;
         #region delegates
-        public delegate void OnMessageReceived(TW_ChannelChatMessage eventData);
-        public delegate void OnCustomRewardRedemption(TW_CustomRewardRedemption eventData);
-        public delegate void OnFollow(TW_Follow eventData);
-        public delegate void OnChannelSubscription(TW_ChannelSubscribe eventData);
-        public delegate void OnChannelSubscriptionGift(TW_ChannelSubscriptionGift eventData);
-        public delegate void OnChannelResubscription(TW_ChannelSubscriptionMessage eventData);
-        public delegate void OnChannelCheer(TW_ChannelCheer eventData);
-        public delegate void OnChannelRaid(TW_ChannelRaid eventData); 
-        public delegate void OnAutomaticRewardRedemption(TW_ChannelAutomaticRewardRedemption eventData);
-        public delegate void OnEventSubConnect();
-        public delegate void OnEventSubDisconnect();
-        public delegate void OnEventSubError();
+        public delegate void OnMessageReceived(TW_ChannelChatMessage message);
+        public delegate void OnCustomRewardRedemption(TW_CustomRewardRedemption message);
+        public delegate void OnFollow(TW_Follow message);
+        public delegate void OnChannelSubscription(TW_ChannelSubscribe message);
+        public delegate void OnChannelSubscriptionGift(TW_ChannelSubscriptionGift message);
+        public delegate void OnChannelResubscription(TW_ChannelSubscriptionMessage message);
+        public delegate void OnChannelCheer(TW_ChannelCheer message);
+        public delegate void OnChannelRaid(TW_ChannelRaid message);
+        public delegate void OnAutomaticRewardRedemption(TW_ChannelAutomaticRewardRedemption message);
+        public delegate void OnEventSubError(JObject error);
         #endregion
 
         #region events
@@ -41,8 +40,6 @@ namespace TW_EventSub
         public event OnChannelCheer onChannelCheer;
         public event OnChannelRaid onChannelRaid;
         public event OnAutomaticRewardRedemption onAutomaticRewardRedemption;
-        public event OnEventSubConnect onEventSubConnect;
-        public event OnEventSubDisconnect onEventSubDisconnect;
         public event OnEventSubError onEventSubError;
         #endregion
 
@@ -67,6 +64,7 @@ namespace TW_EventSub
             }
 
             authData = AuthDataHandler.authData;
+            //StartEventListener().Forget();
         }
 
         public void StartConnection(TW_AuthDataHandler AuthDataHandler)
@@ -89,7 +87,7 @@ namespace TW_EventSub
 
             authData = AuthDataHandler.authData;
 
-            
+
             StartEventListener().Forget();
         }
 
@@ -98,23 +96,26 @@ namespace TW_EventSub
 
         public async UniTask StartEventListener()
         {
+            authTokenIsOK = true;
+            Debug.Log("startEventListenerActive");
             string uri = "wss://eventsub.wss.twitch.tv/ws";
- 
+            //string uri = testURI.uri ;
+
             WebSocket webSocket = new WebSocket(uri);
 
             webSocket.OnOpen += () =>
             {
-                onEventSubConnect?.Invoke();
+                Debug.Log("connection open");
             };
 
             webSocket.OnError += (e) =>
             {
-                onEventSubError?.Invoke();
+                Debug.Log("error!" + e);
             };
 
             webSocket.OnClose += (e) =>
             {
-               onEventSubDisconnect?.Invoke();
+                Debug.Log("connection closed " + e.ToString());
             };
 
             webSocket.OnMessage += ProcessMessage;
@@ -126,19 +127,20 @@ namespace TW_EventSub
             Debug.Log("WebSocket connected");
 
         }
-       
 
-       async UniTaskVoid DispatchQueue()
+
+        async UniTaskVoid DispatchQueue()
         {
             float time = 0;
             while (true)
             {
-               currentWebSocket.DispatchMessageQueue();
+
+                currentWebSocket.DispatchMessageQueue();
                 await UniTask.Yield();
                 time += Time.deltaTime;
                 if (time > 5)
                 {
-                   if(currentWebSocket.State == WebSocketState.Closed)
+                    if (currentWebSocket.State == WebSocketState.Closed)
                     {
                         Debug.Log("WebSocket closed");
                         break;
@@ -150,12 +152,12 @@ namespace TW_EventSub
 
         void ProcessMessage(byte[] message)
         {
-    
+
             JObject obj = JObject.Parse(System.Text.Encoding.UTF8.GetString(message));
             switch ((string)obj.SelectToken("metadata.message_type"))
             {
                 case "session_welcome":
-                   
+
                     eventID = (string)obj.SelectToken("payload.session.id");
                     break;
                 case "session_keepalive":
@@ -179,25 +181,51 @@ namespace TW_EventSub
         }
         async UniTask CheckWebSocket()
         {
-           
-            if (string.IsNullOrEmpty(eventID) )
+
+            if (string.IsNullOrEmpty(eventID))
             {
-                if (currentWebSocket == null)
+                if (currentWebSocket == null || (authTokenIsOK && currentWebSocket.State == WebSocketState.Closed))
                 {
                     StartEventListener().Forget();
 
                     while (string.IsNullOrEmpty(eventID))
                     {
+                        Debug.Log("waiting EventID");
                         await UniTask.Yield();
                     }
+                }
+            }
+        }
 
+        public void SubscriptionError(string e)
+        {
+            if (authTokenIsOK)
+            {
+                int indexOfObjectErrorStart = e.ToString().IndexOf("{");
+                int indexOfObjectErrorEnd = e.ToString().IndexOf("}");
+                JObject error = JObject.Parse(e.ToString().Substring(indexOfObjectErrorStart, indexOfObjectErrorEnd - indexOfObjectErrorStart + 1));
+                switch (error["error"].ToString())
+                {
+                    case "Unauthorized":
+                        if (error["message"].ToString() == "Invalid OAuth token")
+                        {
+                            currentWebSocket.Close();
+                            authTokenIsOK = false;
+                            Debug.Log("patatatatatataa");
+                        }
+                        Debug.LogError(error["message"]);
+                        break;
+                    default:
+                        Debug.LogError("Failed to subscribe the eventsub event" + error.ToString());
+                        break;
                 }
 
+                onEventSubError?.Invoke(error);
             }
         }
 
         #region subscribtionsEvents
-        async UniTaskVoid StartSubscribeChannelChatMessage()
+        public async UniTaskVoid StartSubscribeChannelChatMessage()
         {
             await CheckWebSocket();
 
@@ -222,10 +250,21 @@ namespace TW_EventSub
             headers.Add("Client-Id", authData.clientID);
             headers.Add("Authorization", "Bearer " + authData.authToken);
             headers.Add("Content-Type", "application/json");
-            TW_WebResponse response = await TW_WebRequest.CommonRequest("eventsub/subscriptions", requestType: RequestType.POST, headers: headers, body: requestBody.ToString());
+
+            Debug.Log("hola desde chatmessage" + authTokenIsOK);
+
+            try
+            {
+                TW_WebResponse response = await TW_WebRequest.CommonRequest("eventsub/subscriptions", requestType: RequestType.POST, headers: headers, body: requestBody.ToString());
+
+            }
+            catch (Exception e)
+            {
+                SubscriptionError(e.ToString());
+            }
         }
 
-        async UniTaskVoid StartSubscribeCustomRewardRedemption(string rewardID = null)
+        public async UniTaskVoid StartSubscribeCustomRewardRedemption(string rewardID = null)
         {
             await CheckWebSocket();
 
@@ -253,10 +292,18 @@ namespace TW_EventSub
             headers.Add("Client-Id", authData.clientID);
             headers.Add("Authorization", "Bearer " + authData.authToken);
             headers.Add("Content-Type", "application/json");
-            TW_WebResponse response = await TW_WebRequest.CommonRequest("eventsub/subscriptions", requestType: RequestType.POST, headers: headers, body: requestBody.ToString());
+
+            try
+            {
+                TW_WebResponse response = await TW_WebRequest.CommonRequest("eventsub/subscriptions", requestType: RequestType.POST, headers: headers, body: requestBody.ToString());
+            }
+            catch (Exception e)
+            {
+                SubscriptionError(e.ToString());
+            }
         }
 
-        async UniTaskVoid StartSubscribeFollow()
+        public async UniTaskVoid StartSubscribeFollow()
         {
             await CheckWebSocket();
             if (string.IsNullOrEmpty(eventID))
@@ -281,10 +328,18 @@ namespace TW_EventSub
             headers.Add("Authorization", "Bearer " + authData.authToken);
             headers.Add("Content-Type", "application/json");
 
-            TW_WebResponse response = await TW_WebRequest.CommonRequest("eventsub/subscriptions", requestType: RequestType.POST, headers: headers, body: requestBody.ToString());
+
+            try
+            {
+                TW_WebResponse response = await TW_WebRequest.CommonRequest("eventsub/subscriptions", requestType: RequestType.POST, headers: headers, body: requestBody.ToString());
+            }
+            catch (Exception e)
+            {
+                SubscriptionError(e.ToString());
+            }
         }
 
-        async UniTaskVoid StartSubscribeChannelSubscription()
+        public async UniTaskVoid StartSubscribeChannelSubscription()
         {
             await CheckWebSocket();
             if (string.IsNullOrEmpty(eventID))
@@ -307,10 +362,19 @@ namespace TW_EventSub
             headers.Add("Client-Id", authData.clientID);
             headers.Add("Authorization", "Bearer " + authData.authToken);
             headers.Add("Content-Type", "application/json");
-            TW_WebResponse response = await TW_WebRequest.CommonRequest("eventsub/subscriptions", requestType: RequestType.POST, headers: headers, body: requestBody.ToString());
+
+
+            try
+            {
+                TW_WebResponse response = await TW_WebRequest.CommonRequest("eventsub/subscriptions", requestType: RequestType.POST, headers: headers, body: requestBody.ToString());
+            }
+            catch (Exception e)
+            {
+                SubscriptionError(e.ToString());
+            }
         }
 
-        async UniTaskVoid StartSubscribeChannelSubscriptionGift()
+        public async UniTaskVoid StartSubscribeChannelSubscriptionGift()
         {
             await CheckWebSocket();
             if (string.IsNullOrEmpty(eventID))
@@ -333,10 +397,19 @@ namespace TW_EventSub
             headers.Add("Authorization", "Bearer " + authData.authToken);
             headers.Add("Content-Type", "application/json");
 
-            TW_WebResponse response = await TW_WebRequest.CommonRequest("eventsub/subscriptions", requestType: RequestType.POST, headers: headers, body: requestBody.ToString());
+            try
+            {
+                TW_WebResponse response = await TW_WebRequest.CommonRequest("eventsub/subscriptions", requestType: RequestType.POST, headers: headers, body: requestBody.ToString());
+
+            }
+            catch (Exception e)
+            {
+                SubscriptionError(e.ToString());
+
+            }
         }
 
-        async UniTaskVoid StartSubscribeChannelResubscription()
+        public async UniTaskVoid StartSubscribeChannelResubscription()
         {
             await CheckWebSocket();
             if (string.IsNullOrEmpty(eventID))
@@ -360,11 +433,18 @@ namespace TW_EventSub
             headers.Add("Authorization", "Bearer " + authData.authToken);
             headers.Add("Content-Type", "application/json");
 
-            TW_WebResponse response = await TW_WebRequest.CommonRequest("eventsub/subscriptions", requestType: RequestType.POST, headers: headers, body: requestBody.ToString());
 
+            try
+            {
+                TW_WebResponse response = await TW_WebRequest.CommonRequest("eventsub/subscriptions", requestType: RequestType.POST, headers: headers, body: requestBody.ToString());
+            }
+            catch (Exception e)
+            {
+                SubscriptionError(e.ToString());
+            }
         }
 
-        async UniTaskVoid StartSubscribeChannelCheer()
+        public async UniTaskVoid StartSubscribeChannelCheer()
         {
             await CheckWebSocket();
             if (string.IsNullOrEmpty(eventID))
@@ -388,10 +468,19 @@ namespace TW_EventSub
             headers.Add("Client-Id", authData.clientID);
             headers.Add("Authorization", "Bearer " + authData.authToken);
             headers.Add("Content-Type", "application/json");
-            TW_WebResponse response = await TW_WebRequest.CommonRequest("eventsub/subscriptions", requestType: RequestType.POST, headers: headers, body: requestBody.ToString());
+
+
+            try
+            {
+                TW_WebResponse response = await TW_WebRequest.CommonRequest("eventsub/subscriptions", requestType: RequestType.POST, headers: headers, body: requestBody.ToString());
+            }
+            catch (Exception e)
+            {
+                SubscriptionError(e.ToString());
+            }
         }
 
-        async UniTaskVoid StartSubscribeRaidToBroadcaster()
+        public async UniTaskVoid StartSubscribeRaidToBroadcaster()
         {
             await CheckWebSocket();
             if (string.IsNullOrEmpty(eventID))
@@ -415,10 +504,17 @@ namespace TW_EventSub
             headers.Add("Client-Id", authData.clientID);
             headers.Add("Authorization", "Bearer " + authData.authToken);
             headers.Add("Content-Type", "application/json");
-            TW_WebResponse response = await TW_WebRequest.CommonRequest("eventsub/subscriptions", requestType: RequestType.POST, headers: headers, body: requestBody.ToString());
+
+            try
+            {
+                TW_WebResponse response = await TW_WebRequest.CommonRequest("eventsub/subscriptions", requestType: RequestType.POST, headers: headers, body: requestBody.ToString());
+            }
+            catch (Exception e) { 
+                SubscriptionError(e.ToString());
+            }
         }
 
-        async UniTaskVoid StartSubscribeAutomaticRewardRedemption()
+        public async UniTaskVoid StartSubscribeAutomaticRewardRedemption()
         {
             await CheckWebSocket();
             if (string.IsNullOrEmpty(eventID))
@@ -438,7 +534,19 @@ namespace TW_EventSub
             headers.Add("Client-Id", authData.clientID);
             headers.Add("Authorization", "Bearer " + authData.authToken);
             headers.Add("Content-Type", "application/json");
-            TW_WebResponse response = await TW_WebRequest.CommonRequest("eventsub/subscriptions", requestType: RequestType.POST, headers: headers, body: requestBody.ToString());
+
+            Debug.Log("hola desde automatic reward" + currentWebSocket.State);
+            
+
+            try
+            {
+                TW_WebResponse response = await TW_WebRequest.CommonRequest("eventsub/subscriptions", requestType: RequestType.POST, headers: headers, body: requestBody.ToString());
+            }
+            catch (Exception e)
+            {
+                SubscriptionError(e.ToString());
+            }
+
         }
 
         #endregion
@@ -490,13 +598,12 @@ namespace TW_EventSub
             StartSubscribeAutomaticRewardRedemption().Forget();
         }
         #endregion
-
         public async UniTask<bool> WaitForSessionID()
         {
             float waitTime = 0;
             while (string.IsNullOrEmpty(eventID))
             {
-             
+
                 await UniTask.Yield();
                 waitTime += Time.deltaTime;
                 if (waitTime > 5)
@@ -567,3 +674,10 @@ namespace TW_EventSub
     }
 }
 
+#region testURI
+public class testURI
+{
+    public static string uri = "ws://127.0.0.1:8080/ws";
+    public static string uriSubscribe = "http://127.0.0.1:8080/";
+}
+#endregion
