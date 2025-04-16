@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using TW_EventSub_Models;
 using TW_Models;
 using TW_WebHelper;
+using UnityEditor.ShaderGraph.Internal;
 using UnityEngine;
 
 namespace TW_EventSub
@@ -27,6 +28,8 @@ namespace TW_EventSub
         public delegate void OnChannelRaid(TW_ChannelRaid message);
         public delegate void OnAutomaticRewardRedemption(TW_ChannelAutomaticRewardRedemption message);
         public delegate void OnEventSubError(JObject error);
+        public delegate void OnEventSubConnect();
+        public delegate void OnEventSubDisconnect();
         #endregion
 
         #region events
@@ -40,6 +43,8 @@ namespace TW_EventSub
         public event OnChannelRaid onChannelRaid;
         public event OnAutomaticRewardRedemption onAutomaticRewardRedemption;
         public event OnEventSubError onEventSubError;
+        public event OnEventSubConnect onEventSubConnect;
+        public event OnEventSubDisconnect onEventSubDisconnect;
         #endregion
 
         #region constructors
@@ -98,23 +103,23 @@ namespace TW_EventSub
             authTokenIsOK = true;
             Debug.Log("startEventListenerActive");
             string uri = "wss://eventsub.wss.twitch.tv/ws";
-            //string uri = testURI.uri ;
 
             WebSocket webSocket = new WebSocket(uri);
 
             webSocket.OnOpen += () =>
             {
-                Debug.Log("connection open");
+                onEventSubConnect?.Invoke();
             };
 
             webSocket.OnError += (e) =>
             {
-                Debug.Log("error!" + e);
+                JObject error = new JObject { "error", e.ToString() };
+                onEventSubError?.Invoke(JObject.Parse(e.ToString()));
             };
 
             webSocket.OnClose += (e) =>
             {
-                Debug.Log("connection closed " + e.ToString());
+                onEventSubDisconnect?.Invoke();
             };
 
             webSocket.OnMessage += ProcessMessage;
