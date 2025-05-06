@@ -193,15 +193,16 @@ namespace TW_EventSub
 
                     while (string.IsNullOrEmpty(eventID))
                     {
-                        Debug.Log("waiting EventID");
                         await UniTask.Yield();
                     }
                 }
             }
         }
 
-        public void SubscriptionError(string e)
+        public async void SubscriptionError(string e)
         {
+			eventID = "";
+            currentWebSocket.CancelConnection();
             if (authTokenIsOK)
             {
                 int indexOfObjectErrorStart = e.ToString().IndexOf("{");
@@ -212,9 +213,11 @@ namespace TW_EventSub
                     case "Unauthorized":
                         if (error["message"].ToString() == "Invalid OAuth token")
                         {
-                            currentWebSocket.Close();
+                            //.CancelConnection();
+                            await currentWebSocket.Close();
+                           
+
                             authTokenIsOK = false;
-                            Debug.Log("patatatatatataa");
                         }
                         Debug.LogError(error["message"]);
                         break;
@@ -228,7 +231,7 @@ namespace TW_EventSub
         }
 
         #region subscribtionsEvents
-        public async UniTaskVoid StartSubscribeChannelChatMessage()
+         async UniTaskVoid StartSubscribeChannelChatMessage()
         {
             await CheckWebSocket();
 
@@ -267,7 +270,7 @@ namespace TW_EventSub
             }
         }
 
-        public async UniTaskVoid StartSubscribeCustomRewardRedemption(string rewardID = null)
+         async UniTaskVoid StartSubscribeCustomRewardRedemption(string rewardID = null)
         {
             await CheckWebSocket();
 
@@ -306,7 +309,7 @@ namespace TW_EventSub
             }
         }
 
-        public async UniTaskVoid StartSubscribeFollow()
+         async UniTaskVoid StartSubscribeFollow()
         {
             await CheckWebSocket();
             if (string.IsNullOrEmpty(eventID))
@@ -342,7 +345,7 @@ namespace TW_EventSub
             }
         }
 
-        public async UniTaskVoid StartSubscribeChannelSubscription()
+         async UniTaskVoid StartSubscribeChannelSubscription()
         {
             await CheckWebSocket();
             if (string.IsNullOrEmpty(eventID))
@@ -377,7 +380,7 @@ namespace TW_EventSub
             }
         }
 
-        public async UniTaskVoid StartSubscribeChannelSubscriptionGift()
+         async UniTaskVoid StartSubscribeChannelSubscriptionGift()
         {
             await CheckWebSocket();
             if (string.IsNullOrEmpty(eventID))
@@ -412,7 +415,7 @@ namespace TW_EventSub
             }
         }
 
-        public async UniTaskVoid StartSubscribeChannelResubscription()
+         async UniTaskVoid StartSubscribeChannelResubscription()
         {
             await CheckWebSocket();
             if (string.IsNullOrEmpty(eventID))
@@ -447,7 +450,7 @@ namespace TW_EventSub
             }
         }
 
-        public async UniTaskVoid StartSubscribeChannelCheer()
+         async UniTaskVoid StartSubscribeChannelCheer()
         {
             await CheckWebSocket();
             if (string.IsNullOrEmpty(eventID))
@@ -483,7 +486,7 @@ namespace TW_EventSub
             }
         }
 
-        public async UniTaskVoid StartSubscribeRaidToBroadcaster()
+         async UniTaskVoid StartSubscribeRaidToBroadcaster()
         {
             await CheckWebSocket();
             if (string.IsNullOrEmpty(eventID))
@@ -517,7 +520,7 @@ namespace TW_EventSub
             }
         }
 
-        public async UniTaskVoid StartSubscribeAutomaticRewardRedemption()
+         async UniTaskVoid StartSubscribeAutomaticRewardRedemption()
         {
             await CheckWebSocket();
             if (string.IsNullOrEmpty(eventID))

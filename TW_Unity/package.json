@@ -1,6 +1,6 @@
 {
   "name": "com.foxone.twunity",
-  "version": "1.0.2",
+  "version": "1.0.2a",
   "displayName": "TW Unity",
   "description": "This library It allows you to connect to and access the different Twitch services.",
   "unity": "2022.3",
